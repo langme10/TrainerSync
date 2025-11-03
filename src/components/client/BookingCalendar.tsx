@@ -39,6 +39,7 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 export function BookingCalendar({ clientId, trainerId }: { clientId: string; trainerId: string }) {
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [allTrainerBookings, setAllTrainerBookings] = useState<Booking[]>([]);
   const [selectedWeek, setSelectedWeek] = useState(startOfWeek(new Date()));
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -86,7 +87,7 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
       setSlots(slotsData || []);
     }
 
-    // Fetch existing bookings
+    // Fetch client's own bookings
     const { data: bookingsData, error: bookingsError } = await supabase
       .from('bookings')
       .select('*')
@@ -101,6 +102,23 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
       });
     } else {
       setBookings(bookingsData || []);
+    }
+
+    // Fetch ALL bookings for this trainer to check availability
+    const { data: allBookingsData, error: allBookingsError } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('trainer_id', trainerId)
+      .in('status', ['pending', 'confirmed']);
+
+    if (allBookingsError) {
+      toast({
+        title: "Error loading availability",
+        description: allBookingsError.message,
+        variant: "destructive",
+      });
+    } else {
+      setAllTrainerBookings(allBookingsData || []);
     }
 
     setLoading(false);
@@ -118,17 +136,18 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
     }
     
     const bookingDate = addDays(today, daysToAdd);
+    const formattedDate = format(bookingDate, 'yyyy-MM-dd');
 
-    // Check if already booked
-    const isAlreadyBooked = bookings.some(
-      (b) => b.booking_date === format(bookingDate, 'yyyy-MM-dd') && 
+    // Check if this slot is already booked by ANY client
+    const isSlotTaken = allTrainerBookings.some(
+      (b) => b.booking_date === formattedDate && 
              b.start_time === slot.start_time
     );
 
-    if (isAlreadyBooked) {
+    if (isSlotTaken) {
       toast({
-        title: "Already booked",
-        description: "You already have a booking for this time slot",
+        title: "Slot unavailable",
+        description: "This time slot is already booked",
         variant: "destructive",
       });
       return;
@@ -140,7 +159,7 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
         trainer_id: trainerId,
         client_id: clientId,
         availability_slot_id: slot.id,
-        booking_date: format(bookingDate, 'yyyy-MM-dd'),
+        booking_date: formattedDate,
         start_time: slot.start_time,
         end_time: slot.end_time,
         duration_minutes: slot.duration_minutes,
@@ -173,9 +192,11 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
     }
     
     const bookingDate = addDays(today, daysToAdd);
+    const formattedDate = format(bookingDate, 'yyyy-MM-dd');
 
-    return bookings.some(
-      (b) => b.booking_date === format(bookingDate, 'yyyy-MM-dd') && 
+    // Check if this slot is booked by ANY client (not just current client)
+    return allTrainerBookings.some(
+      (b) => b.booking_date === formattedDate && 
              b.start_time === slot.start_time
     );
   };
@@ -278,7 +299,12 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
                       {slot.start_time}
                     </div>
                     {booked ? (
-                      <Badge className="bg-success">Booked</Badge>
+                      <Badge className="bg-success">
+                        {bookings.some(b => 
+                          b.booking_date === format(getNextOccurrenceDate(slot.day_of_week), 'yyyy-MM-dd') && 
+                          b.start_time === slot.start_time
+                        ) ? 'Your Booking' : 'Booked'}
+                      </Badge>
                     ) : (
                       <Button size="sm" onClick={(e) => {
                         e.stopPropagation();
