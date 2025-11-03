@@ -812,6 +812,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_trainer_owner: {
+        Args: { trainer_profile_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       user_role: "trainer" | "client"
