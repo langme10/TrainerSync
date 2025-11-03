@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { format, addDays, startOfWeek } from "date-fns";
+import { format, addDays, startOfWeek, parseISO } from "date-fns";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -308,7 +308,7 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
               >
                 <div>
                   <div className="font-semibold">
-                    {format(new Date(booking.booking_date), 'EEEE, MMMM d')}
+                    {format(parseISO(booking.booking_date), 'EEEE, MMMM d')}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {booking.start_time} - {booking.end_time}
