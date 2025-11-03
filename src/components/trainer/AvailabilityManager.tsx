@@ -137,7 +137,9 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
     }
   };
 
-  if (loading) return <div>Loading availability...</div>;
+  if (loading) {
+    return <div className="p-8 text-center">Loading availability...</div>;
+  }
 
   return (
     <Card>
