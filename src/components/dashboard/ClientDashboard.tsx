@@ -7,6 +7,7 @@ import { LogOut, Calendar, Dumbbell, Apple } from "lucide-react";
 import { BookingCalendar } from "@/components/client/BookingCalendar";
 import { ProgramViewer } from "@/components/client/ProgramViewer";
 import { MealPlanViewer } from "@/components/client/MealPlanViewer";
+import { ProgressTracking } from "@/components/client/ProgressTracking";
 
 export function ClientDashboard() {
   const { profile, signOut } = useAuth();
@@ -119,6 +120,7 @@ export function ClientDashboard() {
         {clientProfileId && trainerId ? (
           <div className="space-y-6">
             <BookingCalendar clientId={clientProfileId} trainerId={trainerId} />
+            <ProgressTracking clientId={clientProfileId} />
             <div className="grid md:grid-cols-2 gap-6">
               <ProgramViewer clientId={clientProfileId} />
               <MealPlanViewer clientId={clientProfileId} />

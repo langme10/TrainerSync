@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Dumbbell, CheckCircle2 } from "lucide-react";
+import { Dumbbell, CheckCircle2, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { WorkoutLogger } from "./WorkoutLogger";
 
 interface ClientProgram {
   id: string;
@@ -39,6 +40,7 @@ export function WorkoutView({ clientId }: { clientId: string }) {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [sets, setSets] = useState<WorkoutSet[]>([]);
+  const [isLoggingWorkout, setIsLoggingWorkout] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -111,7 +113,23 @@ export function WorkoutView({ clientId }: { clientId: string }) {
 
   const handleViewWorkout = (workout: Workout) => {
     setSelectedWorkout(workout);
+    setIsLoggingWorkout(false);
     fetchWorkoutSets(workout.id);
+  };
+
+  const handleStartWorkout = (workout: Workout) => {
+    setSelectedWorkout(workout);
+    setIsLoggingWorkout(true);
+    fetchWorkoutSets(workout.id);
+  };
+
+  const handleWorkoutComplete = () => {
+    setIsLoggingWorkout(false);
+    setSelectedWorkout(null);
+    toast({
+      title: "Workout Logged!",
+      description: "Great job! Your progress has been saved.",
+    });
   };
 
   if (programs.length === 0) {
@@ -142,71 +160,99 @@ export function WorkoutView({ clientId }: { clientId: string }) {
           {workouts.map((workout) => (
             <div
               key={workout.id}
-              onClick={() => handleViewWorkout(workout)}
-              className="flex items-center justify-between p-4 rounded-lg border-2 border-primary/30 hover:border-primary hover:bg-primary/5 cursor-pointer transition-all"
+              className="flex items-center justify-between p-4 rounded-lg border-2 border-primary/30 hover:border-primary transition-all"
             >
-              <div>
+              <div className="flex-1">
                 <div className="font-semibold">Day {workout.day_index + 1}: {workout.title}</div>
                 {workout.notes && (
                   <p className="text-sm text-muted-foreground mt-1">{workout.notes}</p>
                 )}
               </div>
-              <Button size="sm">View</Button>
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => handleViewWorkout(workout)}
+                >
+                  View
+                </Button>
+                <Button 
+                  size="sm"
+                  onClick={() => handleStartWorkout(workout)}
+                  className="gap-2"
+                >
+                  <Play className="h-3 w-3" />
+                  Log Workout
+                </Button>
+              </div>
             </div>
           ))}
         </CardContent>
       </Card>
 
       {selectedWorkout && sets.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{selectedWorkout.title}</CardTitle>
-            <CardDescription>Day {selectedWorkout.day_index + 1}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {sets.map((set) => (
-              <div key={set.id} className="p-4 rounded-lg bg-muted">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="font-semibold text-lg">{set.exercises.name}</div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      Set {set.set_order}
+        <>
+          {isLoggingWorkout ? (
+            <WorkoutLogger
+              workoutId={selectedWorkout.id}
+              workoutTitle={selectedWorkout.title}
+              clientId={clientId}
+              sets={sets}
+              onComplete={handleWorkoutComplete}
+              onCancel={() => setIsLoggingWorkout(false)}
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>{selectedWorkout.title}</CardTitle>
+                <CardDescription>Day {selectedWorkout.day_index + 1}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {sets.map((set) => (
+                  <div key={set.id} className="p-4 rounded-lg bg-muted">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <div className="font-semibold text-lg">{set.exercises.name}</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Set {set.set_order}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                
-                <div className="flex gap-4 mt-3 flex-wrap">
-                  {set.target_reps && (
-                    <Badge variant="outline">
-                      {set.target_reps} reps
-                    </Badge>
-                  )}
-                  {set.target_weight && (
-                    <Badge variant="outline">
-                      {set.target_weight} lbs
-                    </Badge>
-                  )}
-                  {set.target_rpe && (
-                    <Badge variant="outline">
-                      RPE {set.target_rpe}
-                    </Badge>
-                  )}
-                  {set.rest_seconds && (
-                    <Badge variant="outline">
-                      {set.rest_seconds}s rest
-                    </Badge>
-                  )}
-                </div>
+                    
+                    <div className="flex gap-4 mt-3 flex-wrap">
+                      {set.target_reps && (
+                        <Badge variant="outline">
+                          {set.target_reps} reps
+                        </Badge>
+                      )}
+                      {set.target_weight && (
+                        <Badge variant="outline">
+                          {set.target_weight} lbs
+                        </Badge>
+                      )}
+                      {set.target_rpe && (
+                        <Badge variant="outline">
+                          RPE {set.target_rpe}
+                        </Badge>
+                      )}
+                      {set.rest_seconds && (
+                        <Badge variant="outline">
+                          {set.rest_seconds}s rest
+                        </Badge>
+                      )}
+                    </div>
 
-                {set.exercises.instructions && (
-                  <p className="text-sm text-muted-foreground mt-3 p-2 bg-background rounded">
-                    {set.exercises.instructions}
-                  </p>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+                    {set.exercises.instructions && (
+                      <p className="text-sm text-muted-foreground mt-3 p-2 bg-background rounded">
+                        {set.exercises.instructions}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </div>
   );
