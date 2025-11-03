@@ -8,6 +8,7 @@ import { LogOut, Calendar, Dumbbell, Apple, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { BookingCalendar } from "@/components/client/BookingCalendar";
+import { ClientBookings } from "@/components/client/ClientBookings";
 import { ProgramViewer } from "@/components/client/ProgramViewer";
 import { MealPlanViewer } from "@/components/client/MealPlanViewer";
 import { ProgressTracking } from "@/components/client/ProgressTracking";
@@ -135,6 +136,7 @@ export function ClientDashboard() {
 
         {clientProfileId && trainerId ? (
           <div className="space-y-6">
+            <ClientBookings clientId={clientProfileId} />
             <BookingCalendar clientId={clientProfileId} trainerId={trainerId} />
             <ProgressTracking clientId={clientProfileId} />
             <div className="grid md:grid-cols-2 gap-6">
