@@ -2,9 +2,61 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogOut, UserPlus, Calendar, Users } from "lucide-react";
+import { TrainerAvailability } from "@/components/scheduling/TrainerAvailability";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export function TrainerDashboard() {
   const { profile, signOut } = useAuth();
+  const [stats, setStats] = useState({
+    totalClients: 0,
+    todaySessions: 0,
+    pendingInvites: 0,
+  });
+
+  useEffect(() => {
+    fetchStats();
+  }, [profile]);
+
+  const fetchStats = async () => {
+    if (!profile) return;
+
+    const { data: trainerData } = await supabase
+      .from("trainer_profiles")
+      .select("id")
+      .eq("user_id", profile.id)
+      .single();
+
+    if (trainerData) {
+      // Fetch client count
+      const { count: clientCount } = await supabase
+        .from("client_profiles")
+        .select("*", { count: 'exact', head: true })
+        .eq("trainer_id", trainerData.id);
+
+      // Fetch today's sessions
+      const today = new Date().toISOString().split('T')[0];
+      const { count: sessionCount } = await supabase
+        .from("bookings")
+        .select("*", { count: 'exact', head: true })
+        .eq("trainer_id", trainerData.id)
+        .eq("booking_date", today)
+        .in("status", ["pending", "confirmed"]);
+
+      // Fetch pending invites
+      const { count: inviteCount } = await supabase
+        .from("invitations")
+        .select("*", { count: 'exact', head: true })
+        .eq("trainer_id", trainerData.id)
+        .eq("status", "pending");
+
+      setStats({
+        totalClients: clientCount || 0,
+        todaySessions: sessionCount || 0,
+        pendingInvites: inviteCount || 0,
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-background">
@@ -29,8 +81,10 @@ export function TrainerDashboard() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">No clients yet</p>
+              <div className="text-2xl font-bold">{stats.totalClients}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.totalClients === 0 ? "No clients yet" : "Active clients"}
+              </p>
             </CardContent>
           </Card>
 
@@ -40,8 +94,10 @@ export function TrainerDashboard() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">No sessions scheduled</p>
+              <div className="text-2xl font-bold">{stats.todaySessions}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.todaySessions === 0 ? "No sessions scheduled" : "Scheduled today"}
+              </p>
             </CardContent>
           </Card>
 
@@ -51,46 +107,16 @@ export function TrainerDashboard() {
               <UserPlus className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground">No pending invites</p>
+              <div className="text-2xl font-bold">{stats.pendingInvites}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.pendingInvites === 0 ? "No pending invites" : "Awaiting response"}
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Invite Client</CardTitle>
-              <CardDescription>Send an invitation to a new client</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Coming in Phase 1 - Client invitation system
-              </p>
-              <Button disabled className="w-full">
-                <UserPlus className="mr-2 h-4 w-4" />
-                Invite Client
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Schedule</CardTitle>
-              <CardDescription>Set your availability for client bookings</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Coming in Phase 2 - Scheduling system
-              </p>
-              <Button disabled className="w-full">
-                <Calendar className="mr-2 h-4 w-4" />
-                Set Availability
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Availability Management */}
+        <TrainerAvailability />
       </div>
     </div>
   );

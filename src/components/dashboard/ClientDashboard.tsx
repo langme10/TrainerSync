@@ -2,9 +2,42 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogOut, Calendar, Dumbbell, Apple } from "lucide-react";
+import { ClientBooking } from "@/components/scheduling/ClientBooking";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export function ClientDashboard() {
   const { profile, signOut } = useAuth();
+  const [nextSession, setNextSession] = useState<any>(null);
+
+  useEffect(() => {
+    fetchNextSession();
+  }, [profile]);
+
+  const fetchNextSession = async () => {
+    if (!profile) return;
+
+    const { data: clientData } = await supabase
+      .from("client_profiles")
+      .select("id")
+      .eq("user_id", profile.id)
+      .single();
+
+    if (clientData) {
+      const { data } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("client_id", clientData.id)
+        .gte("booking_date", new Date().toISOString().split('T')[0])
+        .in("status", ["pending", "confirmed"])
+        .order("booking_date", { ascending: true })
+        .order("start_time", { ascending: true })
+        .limit(1)
+        .single();
+
+      setNextSession(data);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-background">
@@ -29,8 +62,24 @@ export function ClientDashboard() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">No sessions scheduled</p>
+              {nextSession ? (
+                <>
+                  <div className="text-2xl font-bold">
+                    {new Date(nextSession.booking_date).toLocaleDateString('en-US', { 
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    at {nextSession.start_time.slice(0, 5)}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold">-</div>
+                  <p className="text-xs text-muted-foreground">No sessions scheduled</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -57,40 +106,8 @@ export function ClientDashboard() {
           </Card>
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Book a Session</CardTitle>
-              <CardDescription>Schedule time with your trainer</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Coming in Phase 2 - You'll be able to view your trainer's available times and book sessions
-              </p>
-              <Button disabled className="w-full">
-                <Calendar className="mr-2 h-4 w-4" />
-                View Availability
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>My Progress</CardTitle>
-              <CardDescription>Track your fitness journey</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Coming in Phase 4 - Progress tracking with charts and metrics
-              </p>
-              <Button disabled className="w-full">
-                <Dumbbell className="mr-2 h-4 w-4" />
-                View Progress
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Booking Interface */}
+        <ClientBooking />
       </div>
     </div>
   );

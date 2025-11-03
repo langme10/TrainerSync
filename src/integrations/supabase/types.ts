@@ -14,6 +14,145 @@ export type Database = {
   }
   public: {
     Tables: {
+      availability_slots: {
+        Row: {
+          buffer_minutes: number | null
+          created_at: string | null
+          day_of_week: number
+          duration_minutes: number
+          end_time: string
+          id: string
+          is_active: boolean | null
+          is_recurring: boolean | null
+          specific_date: string | null
+          start_time: string
+          trainer_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          buffer_minutes?: number | null
+          created_at?: string | null
+          day_of_week: number
+          duration_minutes?: number
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          is_recurring?: boolean | null
+          specific_date?: string | null
+          start_time: string
+          trainer_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          buffer_minutes?: number | null
+          created_at?: string | null
+          day_of_week?: number
+          duration_minutes?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          is_recurring?: boolean | null
+          specific_date?: string | null
+          start_time?: string
+          trainer_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_slots_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bookings: {
+        Row: {
+          availability_slot_id: string | null
+          booking_date: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          client_id: string
+          client_notes: string | null
+          created_at: string | null
+          duration_minutes: number
+          end_time: string
+          id: string
+          start_time: string
+          status: string | null
+          trainer_id: string
+          trainer_notes: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          availability_slot_id?: string | null
+          booking_date: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          client_id: string
+          client_notes?: string | null
+          created_at?: string | null
+          duration_minutes: number
+          end_time: string
+          id?: string
+          start_time: string
+          status?: string | null
+          trainer_id: string
+          trainer_notes?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          availability_slot_id?: string | null
+          booking_date?: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          client_id?: string
+          client_notes?: string | null
+          created_at?: string | null
+          duration_minutes?: number
+          end_time?: string
+          id?: string
+          start_time?: string
+          status?: string | null
+          trainer_id?: string
+          trainer_notes?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_availability_slot_id_fkey"
+            columns: ["availability_slot_id"]
+            isOneToOne: false
+            referencedRelation: "availability_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "client_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_trainer_id_fkey"
+            columns: ["trainer_id"]
+            isOneToOne: false
+            referencedRelation: "trainer_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_profiles: {
         Row: {
           created_at: string | null
@@ -179,7 +318,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_booking_conflict: {
+        Args: {
+          p_booking_date: string
+          p_end_time: string
+          p_exclude_booking_id?: string
+          p_start_time: string
+          p_trainer_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       user_role: "trainer" | "client"
