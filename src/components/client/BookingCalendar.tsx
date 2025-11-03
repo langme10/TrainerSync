@@ -208,11 +208,24 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
       formattedDate = format(bookingDate, 'yyyy-MM-dd');
     }
 
+    console.log('Checking slot:', { 
+      slot_id: slot.id, 
+      specific_date: slot.specific_date,
+      start_time: slot.start_time, 
+      formattedDate,
+      allTrainerBookings: allTrainerBookings.length,
+      bookings: allTrainerBookings.map(b => ({ date: b.booking_date, time: b.start_time }))
+    });
+
     // Check if this slot is booked by ANY client (not just current client)
-    return allTrainerBookings.some(
+    const isBooked = allTrainerBookings.some(
       (b) => b.booking_date === formattedDate && 
              b.start_time === slot.start_time
     );
+
+    console.log('Slot booked?', isBooked);
+    
+    return isBooked;
   };
 
   const getNextOccurrenceDate = (slot: AvailabilitySlot) => {
