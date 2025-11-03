@@ -73,6 +73,8 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
   }, [trainerId, clientId]);
 
   const fetchData = async () => {
+    console.log('fetchData called for trainer:', trainerId, 'client:', clientId);
+    
     // Fetch trainer availability
     const { data: slotsData, error: slotsError } = await supabase
       .from('availability_slots')
@@ -87,6 +89,7 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
         variant: "destructive",
       });
     } else {
+      console.log('Loaded slots:', slotsData);
       setSlots(slotsData || []);
     }
 
@@ -104,6 +107,7 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
         variant: "destructive",
       });
     } else {
+      console.log('Loaded client bookings:', bookingsData);
       setBookings(bookingsData || []);
     }
 
@@ -115,12 +119,14 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
       .in('status', ['pending', 'confirmed']);
 
     if (allBookingsError) {
+      console.log('Error loading trainer bookings:', allBookingsError);
       toast({
         title: "Error loading availability",
         description: allBookingsError.message,
         variant: "destructive",
       });
     } else {
+      console.log('Loaded ALL trainer bookings:', allBookingsData);
       setAllTrainerBookings(allBookingsData || []);
     }
 
