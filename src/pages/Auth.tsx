@@ -21,7 +21,8 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<UserRole>("client");
-  const inviteCode = searchParams.get("invite");
+  const urlInviteCode = searchParams.get("invite");
+  const [inviteCode, setInviteCode] = useState(urlInviteCode || "");
 
   useEffect(() => {
     // Check if user is already logged in
@@ -32,10 +33,11 @@ export default function Auth() {
     });
 
     // If there's an invite code, set role to client
-    if (inviteCode) {
+    if (urlInviteCode) {
       setRole("client");
+      setInviteCode(urlInviteCode);
     }
-  }, [navigate, inviteCode]);
+  }, [navigate, urlInviteCode]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,13 +108,13 @@ export default function Auth() {
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">TrainerSync</CardTitle>
           <CardDescription className="text-center">
-            {inviteCode 
+            {urlInviteCode 
               ? "Complete your registration to join your trainer" 
               : "Sign in or create your account"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue={inviteCode ? "signup" : "signin"} className="w-full">
+          <Tabs defaultValue={urlInviteCode ? "signup" : "signin"} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -184,7 +186,7 @@ export default function Auth() {
                   />
                 </div>
                 
-                {!inviteCode && (
+                {!urlInviteCode && (
                   <div className="space-y-2">
                     <Label>I am a...</Label>
                     <RadioGroup value={role} onValueChange={(value) => setRole(value as UserRole)}>
@@ -201,6 +203,34 @@ export default function Auth() {
                         </Label>
                       </div>
                     </RadioGroup>
+                  </div>
+                )}
+
+                {role === "client" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="invite-code">
+                      Trainer Invitation Code {urlInviteCode ? "" : "(Optional)"}
+                    </Label>
+                    <Input
+                      id="invite-code"
+                      type="text"
+                      placeholder="Enter code from your trainer"
+                      value={inviteCode}
+                      onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                      maxLength={8}
+                      className="uppercase"
+                      disabled={!!urlInviteCode}
+                    />
+                    {urlInviteCode && (
+                      <p className="text-xs text-muted-foreground">
+                        Code pre-filled from invitation link
+                      </p>
+                    )}
+                    {!urlInviteCode && (
+                      <p className="text-xs text-muted-foreground">
+                        If you have an invitation code from a trainer, enter it here
+                      </p>
+                    )}
                   </div>
                 )}
 
