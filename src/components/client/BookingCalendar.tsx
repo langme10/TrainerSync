@@ -45,6 +45,27 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
 
   useEffect(() => {
     fetchData();
+
+    // Set up real-time subscription for bookings
+    const channel = supabase
+      .channel('booking-calendar-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `client_id=eq.${clientId}`
+        },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [trainerId, clientId]);
 
   const fetchData = async () => {
@@ -204,7 +225,7 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
         title: "Booking cancelled",
         description: "Your session has been cancelled.",
       });
-      fetchData();
+      // fetchData(); // No need to call this, real-time will handle it
     }
   };
 

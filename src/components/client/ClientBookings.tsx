@@ -46,6 +46,27 @@ export function ClientBookings({ clientId }: { clientId: string }) {
 
   useEffect(() => {
     fetchBookings();
+
+    // Set up real-time subscription for bookings
+    const channel = supabase
+      .channel('bookings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `client_id=eq.${clientId}`
+        },
+        () => {
+          fetchBookings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [clientId, viewMode, selectedDate]);
 
   const fetchBookings = async () => {
@@ -85,12 +106,24 @@ export function ClientBookings({ clientId }: { clientId: string }) {
   };
 
   const handleCancelBooking = async (bookingId: string) => {
+    // Get the current user's profile ID
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to cancel bookings",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from('bookings')
       .update({
         status: 'cancelled',
         cancelled_at: new Date().toISOString(),
-        cancelled_by: clientId,
+        cancelled_by: user.id,
       })
       .eq('id', bookingId);
 
@@ -105,7 +138,7 @@ export function ClientBookings({ clientId }: { clientId: string }) {
         title: "Booking cancelled",
         description: "Your session has been cancelled and the time slot is now available for others to book.",
       });
-      fetchBookings();
+      // fetchBookings(); // No need to call this, real-time will handle it
     }
   };
 
