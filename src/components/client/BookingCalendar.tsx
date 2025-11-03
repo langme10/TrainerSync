@@ -49,7 +49,8 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
   useEffect(() => {
     fetchData();
 
-    // Set up real-time subscription for bookings
+    // Set up real-time subscription for ALL bookings for this trainer
+    // so we can see when other clients book slots
     const channel = supabase
       .channel('booking-calendar-changes')
       .on(
@@ -58,7 +59,7 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
           event: '*',
           schema: 'public',
           table: 'bookings',
-          filter: `client_id=eq.${clientId}`
+          filter: `trainer_id=eq.${trainerId}`
         },
         () => {
           fetchData();
