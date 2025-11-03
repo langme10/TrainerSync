@@ -1,5 +1,5 @@
-import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
