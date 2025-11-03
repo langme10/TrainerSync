@@ -37,9 +37,7 @@ export function ClientAnalytics({ trainerId }: ClientAnalyticsProps) {
       .select(`
         id,
         user_id,
-        profiles!client_profiles_user_id_fkey (
-          full_name
-        )
+        profiles!inner(full_name)
       `)
       .eq("trainer_id", trainerId);
 
@@ -49,7 +47,6 @@ export function ClientAnalytics({ trainerId }: ClientAnalyticsProps) {
     }
 
     if (data) {
-      console.log("Fetched clients:", data);
       setClients(data);
       if (data.length > 0) {
         setSelectedClientId(data[0].id);
