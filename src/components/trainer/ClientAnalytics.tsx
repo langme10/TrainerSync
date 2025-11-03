@@ -43,6 +43,7 @@ export function ClientAnalytics({ trainerId }: ClientAnalyticsProps) {
     }
 
     if (data) {
+      console.log("Clients data structure:", JSON.stringify(data, null, 2));
       setClients(data);
       if (data.length > 0) {
         setSelectedClientId(data[0].id);

@@ -72,6 +72,7 @@ export function BookingsView({ trainerId }: BookingsViewProps) {
       return;
     }
 
+    console.log("Bookings data structure:", JSON.stringify(data, null, 2));
     setBookings(data || []);
   };
 
