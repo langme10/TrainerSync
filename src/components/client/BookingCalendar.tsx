@@ -36,12 +36,18 @@ interface Booking {
   status: string;
 }
 
+interface OccupiedSlot {
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+}
+
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export function BookingCalendar({ clientId, trainerId }: { clientId: string; trainerId: string }) {
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [allTrainerBookings, setAllTrainerBookings] = useState<Booking[]>([]);
+  const [occupiedSlots, setOccupiedSlots] = useState<OccupiedSlot[]>([]);
   const [selectedWeek, setSelectedWeek] = useState(startOfWeek(new Date()));
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -73,8 +79,6 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
   }, [trainerId, clientId]);
 
   const fetchData = async () => {
-    console.log('fetchData called for trainer:', trainerId, 'client:', clientId);
-    
     // Fetch trainer availability
     const { data: slotsData, error: slotsError } = await supabase
       .from('availability_slots')
@@ -89,7 +93,6 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
         variant: "destructive",
       });
     } else {
-      console.log('Loaded slots:', slotsData);
       setSlots(slotsData || []);
     }
 
@@ -107,27 +110,21 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
         variant: "destructive",
       });
     } else {
-      console.log('Loaded client bookings:', bookingsData);
       setBookings(bookingsData || []);
     }
 
-    // Fetch ALL bookings for this trainer to check availability
-    const { data: allBookingsData, error: allBookingsError } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('trainer_id', trainerId)
-      .in('status', ['pending', 'confirmed']);
+    // Fetch occupied slots using the secure function that bypasses RLS
+    const { data: occupiedSlotsData, error: occupiedSlotsError } = await supabase
+      .rpc('get_occupied_slots', { p_trainer_id: trainerId });
 
-    if (allBookingsError) {
-      console.log('Error loading trainer bookings:', allBookingsError);
+    if (occupiedSlotsError) {
       toast({
         title: "Error loading availability",
-        description: allBookingsError.message,
+        description: occupiedSlotsError.message,
         variant: "destructive",
       });
     } else {
-      console.log('Loaded ALL trainer bookings:', allBookingsData);
-      setAllTrainerBookings(allBookingsData || []);
+      setOccupiedSlots(occupiedSlotsData || []);
     }
 
     setLoading(false);
@@ -153,7 +150,7 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
     }
 
     // Check if this slot is already booked by ANY client
-    const isSlotTaken = allTrainerBookings.some(
+    const isSlotTaken = occupiedSlots.some(
       (b) => b.booking_date === formattedDate && 
              b.start_time === slot.start_time
     );
@@ -214,24 +211,11 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
       formattedDate = format(bookingDate, 'yyyy-MM-dd');
     }
 
-    console.log('Checking slot:', { 
-      slot_id: slot.id, 
-      specific_date: slot.specific_date,
-      start_time: slot.start_time, 
-      formattedDate,
-      allTrainerBookings: allTrainerBookings.length,
-      bookings: allTrainerBookings.map(b => ({ date: b.booking_date, time: b.start_time }))
-    });
-
-    // Check if this slot is booked by ANY client (not just current client)
-    const isBooked = allTrainerBookings.some(
+    // Check if this slot is occupied by ANY client
+    return occupiedSlots.some(
       (b) => b.booking_date === formattedDate && 
              b.start_time === slot.start_time
     );
-
-    console.log('Slot booked?', isBooked);
-    
-    return isBooked;
   };
 
   const getNextOccurrenceDate = (slot: AvailabilitySlot) => {

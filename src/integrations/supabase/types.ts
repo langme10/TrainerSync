@@ -842,6 +842,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_occupied_slots: {
+        Args: { p_trainer_id: string }
+        Returns: {
+          booking_date: string
+          end_time: string
+          start_time: string
+        }[]
+      }
+      is_slot_available: {
+        Args: {
+          p_booking_date: string
+          p_start_time: string
+          p_trainer_id: string
+        }
+        Returns: boolean
+      }
       is_trainer: {
         Args: { user_id_param: string }
         Returns: boolean
