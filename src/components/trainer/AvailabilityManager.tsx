@@ -11,7 +11,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Clock, Calendar, CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface AvailabilitySlot {
@@ -248,7 +248,7 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
                   <Calendar className="h-5 w-5 text-primary" />
                   <div>
                     <div className="font-semibold">
-                      {slot.specific_date ? format(new Date(slot.specific_date), "EEEE, MMMM d, yyyy") : "Recurring"}
+                      {slot.specific_date ? format(parseISO(slot.specific_date), "EEEE, MMMM d, yyyy") : "Recurring"}
                     </div>
                     <div className="text-sm text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
