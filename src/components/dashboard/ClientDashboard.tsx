@@ -24,29 +24,48 @@ export function ClientDashboard() {
   useEffect(() => {
     const fetchClientProfile = async () => {
       if (profile?.id) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('client_profiles')
           .select('id, trainer_id')
           .eq('user_id', profile.id)
-          .single();
+          .maybeSingle();
         
+        if (error) {
+          console.error('Error fetching client profile:', error);
+          return;
+        }
+
         if (data) {
           setClientProfileId(data.id);
           setTrainerId(data.trainer_id);
 
           // Fetch trainer's profile info
           if (data.trainer_id) {
-            const { data: trainerData } = await supabase
+            const { data: trainerData, error: trainerError } = await supabase
               .from('trainer_profiles')
-              .select('user_id, profiles!inner(full_name)')
+              .select('user_id')
               .eq('id', data.trainer_id)
-              .single();
+              .maybeSingle();
             
-            if (trainerData && trainerData.profiles) {
-              setTrainerProfile({
-                user_id: trainerData.user_id,
-                full_name: (trainerData.profiles as any).full_name || 'Your Trainer'
-              });
+            if (trainerError) {
+              console.error('Error fetching trainer profile:', trainerError);
+              return;
+            }
+
+            if (trainerData) {
+              // Fetch the trainer's user profile
+              const { data: userProfile, error: userError } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', trainerData.user_id)
+                .maybeSingle();
+
+              if (!userError && userProfile) {
+                setTrainerProfile({
+                  user_id: trainerData.user_id,
+                  full_name: userProfile.full_name || 'Your Trainer'
+                });
+              }
             }
           }
         }
