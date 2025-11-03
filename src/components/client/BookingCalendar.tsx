@@ -172,12 +172,24 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
   };
 
   const handleCancelBooking = async (bookingId: string) => {
+    // Get the current user's profile ID
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to cancel bookings",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from('bookings')
       .update({
         status: 'cancelled',
         cancelled_at: new Date().toISOString(),
-        cancelled_by: clientId,
+        cancelled_by: user.id,
       })
       .eq('id', bookingId);
 
