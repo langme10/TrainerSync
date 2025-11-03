@@ -19,6 +19,7 @@ export function ClientDashboard() {
   const { unreadCount } = useUnreadMessages();
   const [clientProfileId, setClientProfileId] = useState<string | null>(null);
   const [trainerId, setTrainerId] = useState<string | null>(null);
+  const [trainerProfile, setTrainerProfile] = useState<{ user_id: string; full_name: string } | null>(null);
 
   useEffect(() => {
     const fetchClientProfile = async () => {
@@ -32,6 +33,22 @@ export function ClientDashboard() {
         if (data) {
           setClientProfileId(data.id);
           setTrainerId(data.trainer_id);
+
+          // Fetch trainer's profile info
+          if (data.trainer_id) {
+            const { data: trainerData } = await supabase
+              .from('trainer_profiles')
+              .select('user_id, profiles!inner(full_name)')
+              .eq('id', data.trainer_id)
+              .single();
+            
+            if (trainerData && trainerData.profiles) {
+              setTrainerProfile({
+                user_id: trainerData.user_id,
+                full_name: (trainerData.profiles as any).full_name || 'Your Trainer'
+              });
+            }
+          }
         }
       }
     };
@@ -47,9 +64,19 @@ export function ClientDashboard() {
             <p className="text-muted-foreground">Client Dashboard</p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => navigate('/messages')} variant="outline" className="relative">
+            <Button 
+              onClick={() => navigate('/messages', {
+                state: {
+                  selectedUserId: trainerProfile?.user_id,
+                  selectedUserName: trainerProfile?.full_name
+                }
+              })} 
+              variant="outline" 
+              className="relative"
+              disabled={!trainerProfile}
+            >
               <MessageCircle className="mr-2 h-4 w-4" />
-              Messages
+              Message Trainer
               {unreadCount > 0 && (
                 <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-primary">
                   {unreadCount}

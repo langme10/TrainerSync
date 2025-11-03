@@ -45,13 +45,21 @@ export function MessageThread({ currentUserId, recipientId, recipientName }: Mes
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `recipient_id=eq.${currentUserId}`
         },
         (payload) => {
           const newMsg = payload.new as Message;
-          if (newMsg.sender_id === recipientId) {
-            setMessages(prev => [...prev, newMsg]);
-            markMessagesAsRead();
+          // Add message if it's part of this conversation
+          if ((newMsg.sender_id === recipientId && newMsg.recipient_id === currentUserId) ||
+              (newMsg.sender_id === currentUserId && newMsg.recipient_id === recipientId)) {
+            setMessages(prev => {
+              // Avoid duplicates
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+            // Mark as read if it's incoming
+            if (newMsg.recipient_id === currentUserId) {
+              markMessagesAsRead();
+            }
             scrollToBottom();
           }
         }
@@ -111,10 +119,6 @@ export function MessageThread({ currentUserId, recipientId, recipientName }: Mes
       if (error) throw error;
 
       setNewMessage("");
-      toast({
-        title: "Message sent",
-        description: "Your message has been delivered.",
-      });
     } catch (error: any) {
       toast({
         title: "Error sending message",

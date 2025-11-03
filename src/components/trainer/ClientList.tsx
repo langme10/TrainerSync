@@ -146,7 +146,12 @@ export function ClientList({ trainerId }: ClientListProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/messages`)}
+                        onClick={() => navigate('/messages', { 
+                          state: { 
+                            selectedUserId: client.user_id,
+                            selectedUserName: client.profiles?.full_name || 'Client'
+                          }
+                        })}
                       >
                         <Mail className="h-4 w-4 mr-2" />
                         Message

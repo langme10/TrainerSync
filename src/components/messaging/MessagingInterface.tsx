@@ -91,13 +91,21 @@ export function MessagingInterface({ otherUserId, otherUserName }: {
           event: 'INSERT',
           schema: 'public',
           table: 'messages',
-          filter: `recipient_id=eq.${profile.id}`,
         },
         (payload) => {
           const newMsg = payload.new as Message;
-          if (newMsg.sender_id === otherUserId) {
-            setMessages((prev) => [...prev, newMsg]);
-            markMessagesAsRead();
+          // Add message if it's part of this conversation
+          if ((newMsg.sender_id === otherUserId && newMsg.recipient_id === profile.id) ||
+              (newMsg.sender_id === profile.id && newMsg.recipient_id === otherUserId)) {
+            setMessages((prev) => {
+              // Avoid duplicates
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+            // Mark as read if it's incoming
+            if (newMsg.recipient_id === profile.id) {
+              markMessagesAsRead();
+            }
           }
         }
       )
@@ -114,25 +122,17 @@ export function MessagingInterface({ otherUserId, otherUserName }: {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('messages')
         .insert({
           sender_id: profile.id,
           recipient_id: otherUserId,
           content: newMessage.trim(),
-        })
-        .select()
-        .single();
+        });
 
       if (error) throw error;
 
-      setMessages((prev) => [...prev, data]);
       setNewMessage("");
-      
-      toast({
-        title: "Message sent",
-        description: "Your message has been delivered.",
-      });
     } catch (error: any) {
       toast({
         title: "Error sending message",

@@ -1,16 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { LogOut, ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ConversationsList } from "@/components/messaging/ConversationsList";
 import { MessagingInterface } from "@/components/messaging/MessagingInterface";
 
 export default function Messages() {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = useState<string>("");
+
+  // Auto-select conversation if coming from navigation with state
+  useEffect(() => {
+    if (location.state?.selectedUserId) {
+      setSelectedUserId(location.state.selectedUserId);
+      setSelectedUserName(location.state.selectedUserName || "User");
+      // Clear the navigation state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const handleSelectConversation = (userId: string, userName: string) => {
     setSelectedUserId(userId);
