@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Clock } from "lucide-react";
+import { Plus, Trash2, Clock, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { format, addDays, startOfWeek } from "date-fns";
 
 interface AvailabilitySlot {
   id: string;
@@ -21,6 +22,26 @@ interface AvailabilitySlot {
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const getNextOccurrence = (dayOfWeek: number): Date => {
+  const today = new Date();
+  const currentDay = today.getDay();
+  let daysUntilNext = dayOfWeek - currentDay;
+  
+  if (daysUntilNext < 0) {
+    daysUntilNext += 7;
+  }
+  
+  return addDays(today, daysUntilNext);
+};
+
+const formatTime = (time: string) => {
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+};
 
 export function AvailabilityManager({ trainerId }: { trainerId: string }) {
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
@@ -201,29 +222,38 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
             No availability slots set. Add your first slot to let clients book sessions.
           </div>
         ) : (
-          slots.map((slot) => (
-            <div
-              key={slot.id}
-              className="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-muted/80 transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <Clock className="h-4 w-4 text-primary" />
-                <div>
-                  <div className="font-semibold">{DAYS[slot.day_of_week]}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {slot.start_time} - {slot.end_time} ({slot.duration_minutes} min)
+          slots.map((slot) => {
+            const nextDate = getNextOccurrence(slot.day_of_week);
+            return (
+              <div
+                key={slot.id}
+                className="flex items-center justify-between p-4 rounded-lg bg-muted hover:bg-muted/80 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="font-semibold flex items-center gap-2">
+                      {DAYS[slot.day_of_week]}
+                      <Badge variant="outline" className="font-normal">
+                        {format(nextDate, "MMM d, yyyy")}
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatTime(slot.start_time)} - {formatTime(slot.end_time)} ({slot.duration_minutes} min)
+                    </div>
                   </div>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteSlot(slot.id)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDeleteSlot(slot.id)}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
-          ))
+            );
+          })
         )}
       </CardContent>
     </Card>
