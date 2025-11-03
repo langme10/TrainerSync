@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Apple, Trash2 } from "lucide-react";
+import { Plus, Apple, Trash2, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface MealPlan {
@@ -20,10 +21,22 @@ interface MealPlan {
   target_fats: number;
 }
 
+interface Client {
+  id: string;
+  profiles: {
+    full_name: string;
+  };
+}
+
 export function MealPlanManager({ trainerId }: { trainerId: string }) {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [selectedMealPlan, setSelectedMealPlan] = useState<MealPlan | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [assignmentNotes, setAssignmentNotes] = useState('');
   const { toast } = useToast();
 
   const [newMealPlan, setNewMealPlan] = useState({
@@ -37,6 +50,7 @@ export function MealPlanManager({ trainerId }: { trainerId: string }) {
 
   useEffect(() => {
     fetchMealPlans();
+    fetchClients();
   }, [trainerId]);
 
   const fetchMealPlans = async () => {
@@ -56,6 +70,19 @@ export function MealPlanManager({ trainerId }: { trainerId: string }) {
       setMealPlans(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchClients = async () => {
+    const { data, error } = await supabase
+      .from('client_profiles')
+      .select('id, profiles(full_name)')
+      .eq('trainer_id', trainerId);
+
+    if (error) {
+      console.error("Error loading clients:", error);
+    } else {
+      setClients(data || []);
+    }
   };
 
   const handleCreateMealPlan = async () => {
@@ -118,6 +145,52 @@ export function MealPlanManager({ trainerId }: { trainerId: string }) {
       });
       fetchMealPlans();
     }
+  };
+
+  const handleAssignMealPlan = async () => {
+    if (!selectedClientId || !selectedMealPlan) {
+      toast({
+        title: "Missing information",
+        description: "Please select a client",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const { error } = await supabase
+      .from('client_meal_plans')
+      .insert({
+        client_id: selectedClientId,
+        template_id: selectedMealPlan.id,
+        title: selectedMealPlan.title,
+        start_date: today,
+        notes: assignmentNotes,
+        status: 'active',
+      });
+
+    if (error) {
+      toast({
+        title: "Error assigning meal plan",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Meal plan assigned to client",
+      });
+      setIsAssignDialogOpen(false);
+      setSelectedMealPlan(null);
+      setSelectedClientId('');
+      setAssignmentNotes('');
+    }
+  };
+
+  const openAssignDialog = (mealPlan: MealPlan) => {
+    setSelectedMealPlan(mealPlan);
+    setIsAssignDialogOpen(true);
   };
 
   if (loading) return <div>Loading meal plans...</div>;
@@ -229,6 +302,14 @@ export function MealPlanManager({ trainerId }: { trainerId: string }) {
                   </div>
                 </div>
                 <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openAssignDialog(plan)}
+                >
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Assign
+                </Button>
+                <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleDeleteMealPlan(plan.id)}
@@ -240,6 +321,49 @@ export function MealPlanManager({ trainerId }: { trainerId: string }) {
           ))
         )}
       </CardContent>
+
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Meal Plan to Client</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Meal Plan</Label>
+              <Input value={selectedMealPlan?.title || ''} disabled />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Select Client *</Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.profiles.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Textarea
+                placeholder="Add any notes or instructions for the client..."
+                value={assignmentNotes}
+                onChange={(e) => setAssignmentNotes(e.target.value)}
+              />
+            </div>
+
+            <Button className="w-full" onClick={handleAssignMealPlan}>
+              Assign Meal Plan
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

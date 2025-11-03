@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Dumbbell, Trash2 } from "lucide-react";
+import { Plus, Dumbbell, Trash2, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Program {
@@ -17,10 +18,22 @@ interface Program {
   duration_weeks: number;
 }
 
+interface Client {
+  id: string;
+  profiles: {
+    full_name: string;
+  };
+}
+
 export function ProgramManager({ trainerId }: { trainerId: string }) {
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [assignmentNotes, setAssignmentNotes] = useState('');
   const { toast } = useToast();
 
   const [newProgram, setNewProgram] = useState({
@@ -31,6 +44,7 @@ export function ProgramManager({ trainerId }: { trainerId: string }) {
 
   useEffect(() => {
     fetchPrograms();
+    fetchClients();
   }, [trainerId]);
 
   const fetchPrograms = async () => {
@@ -50,6 +64,19 @@ export function ProgramManager({ trainerId }: { trainerId: string }) {
       setPrograms(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchClients = async () => {
+    const { data, error } = await supabase
+      .from('client_profiles')
+      .select('id, profiles(full_name)')
+      .eq('trainer_id', trainerId);
+
+    if (error) {
+      console.error("Error loading clients:", error);
+    } else {
+      setClients(data || []);
+    }
   };
 
   const handleCreateProgram = async () => {
@@ -105,6 +132,52 @@ export function ProgramManager({ trainerId }: { trainerId: string }) {
       });
       fetchPrograms();
     }
+  };
+
+  const handleAssignProgram = async () => {
+    if (!selectedClientId || !selectedProgram) {
+      toast({
+        title: "Missing information",
+        description: "Please select a client",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+
+    const { error } = await supabase
+      .from('client_programs')
+      .insert({
+        client_id: selectedClientId,
+        template_id: selectedProgram.id,
+        title: selectedProgram.title,
+        start_date: today,
+        notes: assignmentNotes,
+        status: 'active',
+      });
+
+    if (error) {
+      toast({
+        title: "Error assigning program",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Program assigned to client",
+      });
+      setIsAssignDialogOpen(false);
+      setSelectedProgram(null);
+      setSelectedClientId('');
+      setAssignmentNotes('');
+    }
+  };
+
+  const openAssignDialog = (program: Program) => {
+    setSelectedProgram(program);
+    setIsAssignDialogOpen(true);
   };
 
   if (loading) return <div>Loading programs...</div>;
@@ -188,6 +261,14 @@ export function ProgramManager({ trainerId }: { trainerId: string }) {
                   {program.duration_weeks} weeks
                 </Badge>
                 <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openAssignDialog(program)}
+                >
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Assign
+                </Button>
+                <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleDeleteProgram(program.id)}
@@ -199,6 +280,49 @@ export function ProgramManager({ trainerId }: { trainerId: string }) {
           ))
         )}
       </CardContent>
+
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Program to Client</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Program</Label>
+              <Input value={selectedProgram?.title || ''} disabled />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Select Client *</Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.profiles.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Textarea
+                placeholder="Add any notes or instructions for the client..."
+                value={assignmentNotes}
+                onChange={(e) => setAssignmentNotes(e.target.value)}
+              />
+            </div>
+
+            <Button className="w-full" onClick={handleAssignProgram}>
+              Assign Program
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
