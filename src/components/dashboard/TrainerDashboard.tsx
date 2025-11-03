@@ -3,10 +3,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, UserPlus, Calendar, Users, Dumbbell, Apple } from "lucide-react";
+import { LogOut, UserPlus, Calendar, Users } from "lucide-react";
 import { AvailabilityManager } from "@/components/trainer/AvailabilityManager";
-import { ExerciseLibrary } from "@/components/trainer/ExerciseLibrary";
+import { ProgramManager } from "@/components/trainer/ProgramManager";
+import { MealPlanManager } from "@/components/trainer/MealPlanManager";
 
 export function TrainerDashboard() {
   const { profile, signOut } = useAuth();
@@ -36,13 +36,11 @@ export function TrainerDashboard() {
   }, [profile]);
 
   const fetchStats = async (trainerId: string) => {
-    // Fetch client count
     const { count: clientCount } = await supabase
       .from("client_profiles")
       .select("*", { count: 'exact', head: true })
       .eq("trainer_id", trainerId);
 
-    // Fetch today's sessions
     const today = new Date().toISOString().split('T')[0];
     const { count: sessionCount } = await supabase
       .from("bookings")
@@ -51,7 +49,6 @@ export function TrainerDashboard() {
       .eq("booking_date", today)
       .in("status", ["pending", "confirmed"]);
 
-    // Fetch pending invites
     const { count: inviteCount } = await supabase
       .from("invitations")
       .select("*", { count: 'exact', head: true })
@@ -68,7 +65,6 @@ export function TrainerDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-background">
       <div className="container mx-auto p-4 md:p-8">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold">Welcome back, {profile?.full_name}</h1>
@@ -80,7 +76,6 @@ export function TrainerDashboard() {
           </Button>
         </div>
 
-        {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -122,48 +117,13 @@ export function TrainerDashboard() {
           </Card>
         </div>
 
-        {/* Tabs for different sections */}
-        <Tabs defaultValue="schedule" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="schedule">
-              <Calendar className="h-4 w-4 mr-2" />
-              Schedule
-            </TabsTrigger>
-            <TabsTrigger value="programs">
-              <Dumbbell className="h-4 w-4 mr-2" />
-              Programs
-            </TabsTrigger>
-            <TabsTrigger value="nutrition">
-              <Apple className="h-4 w-4 mr-2" />
-              Nutrition
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="schedule">
-            {trainerProfileId && (
-              <AvailabilityManager trainerId={trainerProfileId} />
-            )}
-          </TabsContent>
-
-          <TabsContent value="programs">
-            {trainerProfileId && (
-              <ExerciseLibrary trainerId={trainerProfileId} />
-            )}
-          </TabsContent>
-
-          <TabsContent value="nutrition">
-            <Card>
-              <CardHeader>
-                <CardTitle>Meal Plan Templates</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Meal plan builder coming soon. You'll be able to create nutrition templates for your clients.
-                </p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {trainerProfileId && (
+          <div className="space-y-6">
+            <AvailabilityManager trainerId={trainerProfileId} />
+            <ProgramManager trainerId={trainerProfileId} />
+            <MealPlanManager trainerId={trainerProfileId} />
+          </div>
+        )}
       </div>
     </div>
   );
