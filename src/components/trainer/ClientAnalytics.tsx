@@ -34,11 +34,7 @@ export function ClientAnalytics({ trainerId }: ClientAnalyticsProps) {
   const fetchClients = async () => {
     const { data, error } = await supabase
       .from("client_profiles")
-      .select(`
-        id,
-        user_id,
-        profiles!inner(full_name)
-      `)
+      .select("id, user_id, profiles(full_name)")
       .eq("trainer_id", trainerId);
 
     if (error) {

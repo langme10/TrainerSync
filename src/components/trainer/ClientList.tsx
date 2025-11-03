@@ -25,18 +25,7 @@ export function ClientList({ trainerId }: ClientListProps) {
     setLoading(true);
     const { data } = await supabase
       .from("client_profiles")
-      .select(`
-        id,
-        user_id,
-        goals,
-        experience_level,
-        created_at,
-        profiles:user_id (
-          full_name,
-          email,
-          phone
-        )
-      `)
+      .select("id, user_id, goals, experience_level, created_at, profiles(full_name, email, phone)")
       .eq("trainer_id", trainerId)
       .order("created_at", { ascending: false });
 

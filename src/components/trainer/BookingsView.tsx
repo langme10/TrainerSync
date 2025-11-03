@@ -58,9 +58,7 @@ export function BookingsView({ trainerId }: BookingsViewProps) {
         end_time,
         status,
         client_id,
-        client_profiles!inner(
-          profiles!inner(full_name)
-        )
+        client_profiles(profiles(full_name))
       `)
       .eq("trainer_id", trainerId)
       .gte("booking_date", startDate)
