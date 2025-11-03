@@ -842,6 +842,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_trainer: {
+        Args: { user_id_param: string }
+        Returns: boolean
+      }
       is_trainer_owner: {
         Args: { trainer_profile_id: string }
         Returns: boolean

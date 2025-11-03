@@ -12,6 +12,7 @@ import { ProgramManager } from "@/components/trainer/ProgramManager";
 import { MealPlanManager } from "@/components/trainer/MealPlanManager";
 import { ClientAnalytics } from "@/components/trainer/ClientAnalytics";
 import { ClientList } from "@/components/trainer/ClientList";
+import { ClientInvitation } from "@/components/trainer/ClientInvitation";
 
 export function TrainerDashboard() {
   const { profile, signOut } = useAuth();
@@ -142,6 +143,7 @@ export function TrainerDashboard() {
 
         {trainerProfileId ? (
           <div className="space-y-6">
+            <ClientInvitation trainerId={trainerProfileId} />
             <ClientAnalytics trainerId={trainerProfileId} />
             <ClientList trainerId={trainerProfileId} />
             <AvailabilityManager trainerId={trainerProfileId} />
