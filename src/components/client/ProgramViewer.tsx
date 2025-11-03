@@ -34,7 +34,13 @@ export function ProgramViewer({ clientId }: { clientId: string }) {
   const fetchPrograms = async () => {
     const { data, error } = await supabase
       .from('client_programs')
-      .select('*, program_templates(description, duration_weeks)')
+      .select(`
+        *,
+        program_templates!template_id (
+          description,
+          duration_weeks
+        )
+      `)
       .eq('client_id', clientId)
       .order('start_date', { ascending: false });
 

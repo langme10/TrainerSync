@@ -37,7 +37,16 @@ export function MealPlanViewer({ clientId }: { clientId: string }) {
   const fetchMealPlans = async () => {
     const { data, error } = await supabase
       .from('client_meal_plans')
-      .select('*, meal_plan_templates(description, target_calories, target_protein, target_carbs, target_fats)')
+      .select(`
+        *,
+        meal_plan_templates!template_id (
+          description,
+          target_calories,
+          target_protein,
+          target_carbs,
+          target_fats
+        )
+      `)
       .eq('client_id', clientId)
       .order('start_date', { ascending: false });
 
