@@ -6,10 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Clock, Calendar } from "lucide-react";
+import { Plus, Trash2, Clock, Calendar, CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { format, addDays, startOfWeek } from "date-fns";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface AvailabilitySlot {
   id: string;
@@ -19,21 +22,8 @@ interface AvailabilitySlot {
   duration_minutes: number;
   is_recurring: boolean;
   is_active: boolean;
+  specific_date: string | null;
 }
-
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-const getNextOccurrence = (dayOfWeek: number): Date => {
-  const today = new Date();
-  const currentDay = today.getDay();
-  let daysUntilNext = dayOfWeek - currentDay;
-  
-  if (daysUntilNext < 0) {
-    daysUntilNext += 7;
-  }
-  
-  return addDays(today, daysUntilNext);
-};
 
 const formatTime = (time: string) => {
   const [hours, minutes] = time.split(':');
@@ -47,10 +37,10 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>();
   const { toast } = useToast();
 
   const [newSlot, setNewSlot] = useState({
-    day_of_week: 1,
     start_time: '09:00',
     end_time: '10:00',
     duration_minutes: 60,
@@ -61,12 +51,15 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
   }, [trainerId]);
 
   const fetchSlots = async () => {
+    const today = format(new Date(), 'yyyy-MM-dd');
     const { data, error } = await supabase
       .from('availability_slots')
       .select('*')
       .eq('trainer_id', trainerId)
       .eq('is_active', true)
-      .order('day_of_week', { ascending: true })
+      .gte('specific_date', today)
+      .not('specific_date', 'is', null)
+      .order('specific_date', { ascending: true })
       .order('start_time', { ascending: true });
 
     if (error) {
@@ -82,10 +75,22 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
   };
 
   const handleAddSlot = async () => {
+    if (!selectedDate) {
+      toast({
+        title: "Date required",
+        description: "Please select a date for the time slot",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from('availability_slots')
       .insert({
         trainer_id: trainerId,
+        specific_date: format(selectedDate, 'yyyy-MM-dd'),
+        day_of_week: selectedDate.getDay(),
+        is_recurring: false,
         ...newSlot,
       });
 
@@ -102,8 +107,8 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
       });
       setIsDialogOpen(false);
       fetchSlots();
+      setSelectedDate(undefined);
       setNewSlot({
-        day_of_week: 1,
         start_time: '09:00',
         end_time: '10:00',
         duration_minutes: 60,
@@ -154,22 +159,31 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Day of Week</Label>
-                <Select
-                  value={newSlot.day_of_week.toString()}
-                  onValueChange={(value) => setNewSlot({ ...newSlot, day_of_week: parseInt(value) })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DAYS.map((day, index) => (
-                      <SelectItem key={index} value={index.toString()}>
-                        {day}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !selectedDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -223,7 +237,6 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
           </div>
         ) : (
           slots.map((slot) => {
-            const nextDate = getNextOccurrence(slot.day_of_week);
             return (
               <div
                 key={slot.id}
@@ -232,11 +245,8 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
                 <div className="flex items-center gap-3">
                   <Calendar className="h-5 w-5 text-primary" />
                   <div>
-                    <div className="font-semibold flex items-center gap-2">
-                      {DAYS[slot.day_of_week]}
-                      <Badge variant="outline" className="font-normal">
-                        {format(nextDate, "MMM d, yyyy")}
-                      </Badge>
+                    <div className="font-semibold">
+                      {slot.specific_date ? format(new Date(slot.specific_date), "EEEE, MMMM d, yyyy") : "Recurring"}
                     </div>
                     <div className="text-sm text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
