@@ -51,12 +51,14 @@ export function MealPlanViewer({ clientId }: { clientId: string }) {
       .order('start_date', { ascending: false });
 
     if (error) {
+      console.error('Error loading meal plans:', error);
       toast({
         title: "Error loading meal plans",
         description: error.message,
         variant: "destructive",
       });
     } else {
+      console.log('Loaded meal plans:', data);
       setMealPlans(data || []);
     }
     setLoading(false);

@@ -45,12 +45,14 @@ export function ProgramViewer({ clientId }: { clientId: string }) {
       .order('start_date', { ascending: false });
 
     if (error) {
+      console.error('Error loading programs:', error);
       toast({
         title: "Error loading programs",
         description: error.message,
         variant: "destructive",
       });
     } else {
+      console.log('Loaded programs:', data);
       setPrograms(data || []);
     }
     setLoading(false);
