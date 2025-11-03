@@ -20,15 +20,23 @@ export function TrainerDashboard() {
   useEffect(() => {
     const fetchTrainerProfile = async () => {
       if (profile?.id) {
-        const { data } = await supabase
+        console.log('Fetching trainer profile for user:', profile.id);
+        const { data, error } = await supabase
           .from('trainer_profiles')
           .select('id')
           .eq('user_id', profile.id)
           .single();
         
+        if (error) {
+          console.error('Error fetching trainer profile:', error);
+        }
+        
         if (data) {
+          console.log('Trainer profile found:', data.id);
           setTrainerProfileId(data.id);
           fetchStats(data.id);
+        } else {
+          console.log('No trainer profile found');
         }
       }
     };
@@ -117,12 +125,18 @@ export function TrainerDashboard() {
           </Card>
         </div>
 
-        {trainerProfileId && (
+        {trainerProfileId ? (
           <div className="space-y-6">
             <AvailabilityManager trainerId={trainerProfileId} />
             <ProgramManager trainerId={trainerProfileId} />
             <MealPlanManager trainerId={trainerProfileId} />
           </div>
+        ) : (
+          <Card>
+            <CardContent className="py-8">
+              <p className="text-center text-muted-foreground">Loading your trainer profile...</p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
