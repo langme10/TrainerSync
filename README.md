@@ -16,10 +16,6 @@ The goal: simplify the business side of training so coaches can focus on what ma
 ✅ Automated reminders and daily summaries (planned)  
 ✅ Secure authentication and data storage  
 
-<p align="center">
-<img src="https://via.placeholder.com/700x400?text=TrainerSync+Dashboard+Preview" width="80%" alt="TrainerSync Dashboard"/>
-</p>
-
 ---
 ## What technologies are used for this project?
 
