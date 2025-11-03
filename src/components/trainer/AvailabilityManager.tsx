@@ -6,13 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Clock, Calendar, CalendarIcon } from "lucide-react";
+import { Plus, Trash2, Clock, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { format, addDays, startOfWeek } from "date-fns";
 
 interface AvailabilitySlot {
   id: string;
@@ -22,8 +19,21 @@ interface AvailabilitySlot {
   duration_minutes: number;
   is_recurring: boolean;
   is_active: boolean;
-  specific_date: string | null;
 }
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const getNextOccurrence = (dayOfWeek: number): Date => {
+  const today = new Date();
+  const currentDay = today.getDay();
+  let daysUntilNext = dayOfWeek - currentDay;
+  
+  if (daysUntilNext < 0) {
+    daysUntilNext += 7;
+  }
+  
+  return addDays(today, daysUntilNext);
+};
 
 const formatTime = (time: string) => {
   const [hours, minutes] = time.split(':');
@@ -37,10 +47,10 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>();
   const { toast } = useToast();
 
   const [newSlot, setNewSlot] = useState({
+    day_of_week: 1,
     start_time: '09:00',
     end_time: '10:00',
     duration_minutes: 60,
@@ -51,26 +61,20 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
   }, [trainerId]);
 
   const fetchSlots = async () => {
-    const today = new Date().toISOString().split('T')[0];
-    
     const { data, error } = await supabase
       .from('availability_slots')
       .select('*')
       .eq('trainer_id', trainerId)
       .eq('is_active', true)
-      .not('specific_date', 'is', null)
-      .gte('specific_date', today)
-      .order('specific_date', { ascending: true })
+      .order('day_of_week', { ascending: true })
       .order('start_time', { ascending: true });
 
     if (error) {
-      console.error("Fetch slots error:", error);
       toast({
         title: "Error loading availability",
         description: error.message,
         variant: "destructive",
       });
-      setSlots([]);
     } else {
       setSlots(data || []);
     }
@@ -78,25 +82,10 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
   };
 
   const handleAddSlot = async () => {
-    if (!selectedDate) {
-      toast({
-        title: "Error",
-        description: "Please select a date",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const dateString = format(selectedDate, "yyyy-MM-dd");
-    const dayOfWeek = selectedDate.getDay();
-
     const { error } = await supabase
       .from('availability_slots')
       .insert({
         trainer_id: trainerId,
-        specific_date: dateString,
-        day_of_week: dayOfWeek,
-        is_recurring: false,
         ...newSlot,
       });
 
@@ -112,9 +101,9 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
         description: "Availability slot added",
       });
       setIsDialogOpen(false);
-      setSelectedDate(undefined);
       fetchSlots();
       setNewSlot({
+        day_of_week: 1,
         start_time: '09:00',
         end_time: '10:00',
         duration_minutes: 60,
@@ -165,31 +154,22 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !selectedDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={setSelectedDate}
-                      disabled={(date) => date < new Date()}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Label>Day of Week</Label>
+                <Select
+                  value={newSlot.day_of_week.toString()}
+                  onValueChange={(value) => setNewSlot({ ...newSlot, day_of_week: parseInt(value) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS.map((day, index) => (
+                      <SelectItem key={index} value={index.toString()}>
+                        {day}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -242,32 +222,38 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
             No availability slots set. Add your first slot to let clients book sessions.
           </div>
         ) : (
-          slots.map((slot) => (
-            <div
-              key={slot.id}
-              className="flex items-center justify-between p-4 rounded-lg bg-muted hover:bg-muted/80 transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-primary" />
-                <div>
-                  <div className="font-semibold">
-                    {slot.specific_date ? format(new Date(slot.specific_date), "EEEE, MMMM d, yyyy") : "No date"}
-                  </div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {formatTime(slot.start_time)} - {formatTime(slot.end_time)} ({slot.duration_minutes} min)
+          slots.map((slot) => {
+            const nextDate = getNextOccurrence(slot.day_of_week);
+            return (
+              <div
+                key={slot.id}
+                className="flex items-center justify-between p-4 rounded-lg bg-muted hover:bg-muted/80 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <div>
+                    <div className="font-semibold flex items-center gap-2">
+                      {DAYS[slot.day_of_week]}
+                      <Badge variant="outline" className="font-normal">
+                        {format(nextDate, "MMM d, yyyy")}
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {formatTime(slot.start_time)} - {formatTime(slot.end_time)} ({slot.duration_minutes} min)
+                    </div>
                   </div>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteSlot(slot.id)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDeleteSlot(slot.id)}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
-          ))
+            );
+          })
         )}
       </CardContent>
     </Card>
