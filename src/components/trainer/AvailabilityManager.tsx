@@ -84,11 +84,17 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
       return;
     }
 
+    // Format date using local date components to avoid timezone issues
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+
     const { error } = await supabase
       .from('availability_slots')
       .insert({
         trainer_id: trainerId,
-        specific_date: format(selectedDate, 'yyyy-MM-dd'),
+        specific_date: dateString,
         day_of_week: selectedDate.getDay(),
         is_recurring: false,
         ...newSlot,
