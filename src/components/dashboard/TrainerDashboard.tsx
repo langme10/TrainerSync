@@ -10,6 +10,8 @@ import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { AvailabilityManager } from "@/components/trainer/AvailabilityManager";
 import { ProgramManager } from "@/components/trainer/ProgramManager";
 import { MealPlanManager } from "@/components/trainer/MealPlanManager";
+import { ClientAnalytics } from "@/components/trainer/ClientAnalytics";
+import { ClientList } from "@/components/trainer/ClientList";
 
 export function TrainerDashboard() {
   const { profile, signOut } = useAuth();
@@ -140,6 +142,8 @@ export function TrainerDashboard() {
 
         {trainerProfileId ? (
           <div className="space-y-6">
+            <ClientAnalytics trainerId={trainerProfileId} />
+            <ClientList trainerId={trainerProfileId} />
             <AvailabilityManager trainerId={trainerProfileId} />
             <ProgramManager trainerId={trainerProfileId} />
             <MealPlanManager trainerId={trainerProfileId} />
