@@ -289,56 +289,45 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
               Your trainer hasn't set up availability yet. Check back soon!
             </div>
           ) : (
-            slots.map((slot) => {
-              const booked = isSlotBooked(slot);
-              const nextDate = getNextOccurrenceDate(slot);
-              return (
-                <div
-                  key={slot.id}
-                  className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
-                    booked
-                      ? 'bg-success/10 border-success/30'
-                      : 'border-primary/30 hover:border-primary hover:bg-primary/5 cursor-pointer'
-                  }`}
-                  onClick={() => !booked && handleBookSlot(slot)}
-                >
-                  <div className="flex items-center gap-3">
-                    {booked ? (
-                      <Check className="h-5 w-5 text-success" />
-                    ) : (
+            slots
+              .filter((slot) => !isSlotBooked(slot))
+              .map((slot) => {
+                const nextDate = getNextOccurrenceDate(slot);
+                return (
+                  <div
+                    key={slot.id}
+                    className="flex items-center justify-between p-4 rounded-lg border-2 transition-all border-primary/30 hover:border-primary hover:bg-primary/5 cursor-pointer"
+                    onClick={() => handleBookSlot(slot)}
+                  >
+                    <div className="flex items-center gap-3">
                       <Calendar className="h-5 w-5 text-primary" />
-                    )}
-                    <div>
-                      <div className="font-semibold">{format(nextDate, 'EEEE, MMMM d')}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {slot.duration_minutes} minute session
+                      <div>
+                        <div className="font-semibold">{format(nextDate, 'EEEE, MMMM d')}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {slot.duration_minutes} minute session
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 font-medium">
-                      <Clock className="h-4 w-4" />
-                      {slot.start_time}
-                    </div>
-                    {booked ? (
-                      <Badge className="bg-success">
-                        {bookings.some(b => {
-                          const slotDate = slot.specific_date || format(getNextOccurrenceDate(slot), 'yyyy-MM-dd');
-                          return b.booking_date === slotDate && b.start_time === slot.start_time;
-                        }) ? 'Your Booking' : 'Booked'}
-                      </Badge>
-                    ) : (
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 font-medium">
+                        <Clock className="h-4 w-4" />
+                        {slot.start_time}
+                      </div>
                       <Button size="sm" onClick={(e) => {
                         e.stopPropagation();
                         handleBookSlot(slot);
                       }}>
                         Book
                       </Button>
-                    )}
+                    </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              })
+          )}
+          {slots.length > 0 && slots.filter((slot) => !isSlotBooked(slot)).length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              All available slots are currently booked. Check back later!
+            </div>
           )}
         </CardContent>
       </Card>
