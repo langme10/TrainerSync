@@ -20,23 +20,20 @@ export function TrainerDashboard() {
   useEffect(() => {
     const fetchTrainerProfile = async () => {
       if (profile?.id) {
-        console.log('Fetching trainer profile for user:', profile.id);
         const { data, error } = await supabase
           .from('trainer_profiles')
           .select('id')
           .eq('user_id', profile.id)
-          .single();
+          .maybeSingle();
         
         if (error) {
           console.error('Error fetching trainer profile:', error);
+          return;
         }
         
         if (data) {
-          console.log('Trainer profile found:', data.id);
           setTrainerProfileId(data.id);
           fetchStats(data.id);
-        } else {
-          console.log('No trainer profile found');
         }
       }
     };
