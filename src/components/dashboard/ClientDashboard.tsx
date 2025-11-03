@@ -1,42 +1,52 @@
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, Calendar, Dumbbell, Apple } from "lucide-react";
-import { ClientBooking } from "@/components/scheduling/ClientBooking";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LogOut, Calendar, Dumbbell, Apple } from "lucide-react";
+import { BookingCalendar } from "@/components/client/BookingCalendar";
 
 export function ClientDashboard() {
   const { profile, signOut } = useAuth();
+  const [clientProfileId, setClientProfileId] = useState<string | null>(null);
+  const [trainerId, setTrainerId] = useState<string | null>(null);
   const [nextSession, setNextSession] = useState<any>(null);
 
   useEffect(() => {
-    fetchNextSession();
+    const fetchClientProfile = async () => {
+      if (profile?.id) {
+        const { data } = await supabase
+          .from('client_profiles')
+          .select('id, trainer_id')
+          .eq('user_id', profile.id)
+          .single();
+        
+        if (data) {
+          setClientProfileId(data.id);
+          setTrainerId(data.trainer_id);
+          
+          if (data.id) {
+            fetchNextSession(data.id);
+          }
+        }
+      }
+    };
+    fetchClientProfile();
   }, [profile]);
 
-  const fetchNextSession = async () => {
-    if (!profile) return;
+  const fetchNextSession = async (clientId: string) => {
+    const { data } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("client_id", clientId)
+      .gte("booking_date", new Date().toISOString().split('T')[0])
+      .in("status", ["pending", "confirmed"])
+      .order("booking_date", { ascending: true })
+      .order("start_time", { ascending: true })
+      .limit(1)
+      .maybeSingle();
 
-    const { data: clientData } = await supabase
-      .from("client_profiles")
-      .select("id")
-      .eq("user_id", profile.id)
-      .single();
-
-    if (clientData) {
-      const { data } = await supabase
-        .from("bookings")
-        .select("*")
-        .eq("client_id", clientData.id)
-        .gte("booking_date", new Date().toISOString().split('T')[0])
-        .in("status", ["pending", "confirmed"])
-        .order("booking_date", { ascending: true })
-        .order("start_time", { ascending: true })
-        .limit(1)
-        .single();
-
-      setNextSession(data);
-    }
+    setNextSession(data);
   };
 
   return (
@@ -90,7 +100,7 @@ export function ClientDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">No workout assigned</p>
+              <p className="text-xs text-muted-foreground">Coming in Phase 3</p>
             </CardContent>
           </Card>
 
@@ -101,13 +111,26 @@ export function ClientDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">No meal plan assigned</p>
+              <p className="text-xs text-muted-foreground">Coming in Phase 3</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Booking Interface */}
-        <ClientBooking />
+        {/* Booking System */}
+        {clientProfileId && trainerId ? (
+          <BookingCalendar clientId={clientProfileId} trainerId={trainerId} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>No Trainer Assigned</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                You need to be connected with a trainer to book sessions. Ask your trainer to send you an invitation link.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

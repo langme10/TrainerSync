@@ -1,13 +1,14 @@
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, UserPlus, Calendar, Users } from "lucide-react";
-import { TrainerAvailability } from "@/components/scheduling/TrainerAvailability";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LogOut, UserPlus, Calendar, Users } from "lucide-react";
+import { AvailabilityManager } from "@/components/trainer/AvailabilityManager";
 
 export function TrainerDashboard() {
   const { profile, signOut } = useAuth();
+  const [trainerProfileId, setTrainerProfileId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalClients: 0,
     todaySessions: 0,
@@ -15,47 +16,51 @@ export function TrainerDashboard() {
   });
 
   useEffect(() => {
-    fetchStats();
+    const fetchTrainerProfile = async () => {
+      if (profile?.id) {
+        const { data } = await supabase
+          .from('trainer_profiles')
+          .select('id')
+          .eq('user_id', profile.id)
+          .single();
+        
+        if (data) {
+          setTrainerProfileId(data.id);
+          fetchStats(data.id);
+        }
+      }
+    };
+    fetchTrainerProfile();
   }, [profile]);
 
-  const fetchStats = async () => {
-    if (!profile) return;
+  const fetchStats = async (trainerId: string) => {
+    // Fetch client count
+    const { count: clientCount } = await supabase
+      .from("client_profiles")
+      .select("*", { count: 'exact', head: true })
+      .eq("trainer_id", trainerId);
 
-    const { data: trainerData } = await supabase
-      .from("trainer_profiles")
-      .select("id")
-      .eq("user_id", profile.id)
-      .single();
+    // Fetch today's sessions
+    const today = new Date().toISOString().split('T')[0];
+    const { count: sessionCount } = await supabase
+      .from("bookings")
+      .select("*", { count: 'exact', head: true })
+      .eq("trainer_id", trainerId)
+      .eq("booking_date", today)
+      .in("status", ["pending", "confirmed"]);
 
-    if (trainerData) {
-      // Fetch client count
-      const { count: clientCount } = await supabase
-        .from("client_profiles")
-        .select("*", { count: 'exact', head: true })
-        .eq("trainer_id", trainerData.id);
+    // Fetch pending invites
+    const { count: inviteCount } = await supabase
+      .from("invitations")
+      .select("*", { count: 'exact', head: true })
+      .eq("trainer_id", trainerId)
+      .eq("status", "pending");
 
-      // Fetch today's sessions
-      const today = new Date().toISOString().split('T')[0];
-      const { count: sessionCount } = await supabase
-        .from("bookings")
-        .select("*", { count: 'exact', head: true })
-        .eq("trainer_id", trainerData.id)
-        .eq("booking_date", today)
-        .in("status", ["pending", "confirmed"]);
-
-      // Fetch pending invites
-      const { count: inviteCount } = await supabase
-        .from("invitations")
-        .select("*", { count: 'exact', head: true })
-        .eq("trainer_id", trainerData.id)
-        .eq("status", "pending");
-
-      setStats({
-        totalClients: clientCount || 0,
-        todaySessions: sessionCount || 0,
-        pendingInvites: inviteCount || 0,
-      });
-    }
+    setStats({
+      totalClients: clientCount || 0,
+      todaySessions: sessionCount || 0,
+      pendingInvites: inviteCount || 0,
+    });
   };
 
   return (
@@ -116,7 +121,9 @@ export function TrainerDashboard() {
         </div>
 
         {/* Availability Management */}
-        <TrainerAvailability />
+        {trainerProfileId && (
+          <AvailabilityManager trainerId={trainerProfileId} />
+        )}
       </div>
     </div>
   );
