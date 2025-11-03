@@ -3,8 +3,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, UserPlus, Calendar, Users } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LogOut, UserPlus, Calendar, Users, Dumbbell, Apple } from "lucide-react";
 import { AvailabilityManager } from "@/components/trainer/AvailabilityManager";
+import { ExerciseLibrary } from "@/components/trainer/ExerciseLibrary";
 
 export function TrainerDashboard() {
   const { profile, signOut } = useAuth();
@@ -120,10 +122,48 @@ export function TrainerDashboard() {
           </Card>
         </div>
 
-        {/* Availability Management */}
-        {trainerProfileId && (
-          <AvailabilityManager trainerId={trainerProfileId} />
-        )}
+        {/* Tabs for different sections */}
+        <Tabs defaultValue="schedule" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="schedule">
+              <Calendar className="h-4 w-4 mr-2" />
+              Schedule
+            </TabsTrigger>
+            <TabsTrigger value="programs">
+              <Dumbbell className="h-4 w-4 mr-2" />
+              Programs
+            </TabsTrigger>
+            <TabsTrigger value="nutrition">
+              <Apple className="h-4 w-4 mr-2" />
+              Nutrition
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="schedule">
+            {trainerProfileId && (
+              <AvailabilityManager trainerId={trainerProfileId} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="programs">
+            {trainerProfileId && (
+              <ExerciseLibrary trainerId={trainerProfileId} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="nutrition">
+            <Card>
+              <CardHeader>
+                <CardTitle>Meal Plan Templates</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Meal plan builder coming soon. You'll be able to create nutrition templates for your clients.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

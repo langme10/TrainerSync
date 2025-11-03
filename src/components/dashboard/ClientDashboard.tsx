@@ -3,8 +3,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut, Calendar, Dumbbell, Apple } from "lucide-react";
 import { BookingCalendar } from "@/components/client/BookingCalendar";
+import { WorkoutView } from "@/components/client/WorkoutView";
+import { MealPlanView } from "@/components/client/MealPlanView";
 
 export function ClientDashboard() {
   const { profile, signOut } = useAuth();
@@ -116,21 +119,52 @@ export function ClientDashboard() {
           </Card>
         </div>
 
-        {/* Booking System */}
-        {clientProfileId && trainerId ? (
-          <BookingCalendar clientId={clientProfileId} trainerId={trainerId} />
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>No Trainer Assigned</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                You need to be connected with a trainer to book sessions. Ask your trainer to send you an invitation link.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {/* Tabs for different sections */}
+        <Tabs defaultValue="sessions" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="sessions">
+              <Calendar className="h-4 w-4 mr-2" />
+              Sessions
+            </TabsTrigger>
+            <TabsTrigger value="workouts">
+              <Dumbbell className="h-4 w-4 mr-2" />
+              Workouts
+            </TabsTrigger>
+            <TabsTrigger value="nutrition">
+              <Apple className="h-4 w-4 mr-2" />
+              Nutrition
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="sessions">
+            {clientProfileId && trainerId ? (
+              <BookingCalendar clientId={clientProfileId} trainerId={trainerId} />
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>No Trainer Assigned</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    You need to be connected with a trainer to book sessions. Ask your trainer to send you an invitation link.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="workouts">
+            {clientProfileId && (
+              <WorkoutView clientId={clientProfileId} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="nutrition">
+            {clientProfileId && (
+              <MealPlanView clientId={clientProfileId} />
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
