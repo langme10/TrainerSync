@@ -30,8 +30,12 @@ export function ClientList({ trainerId }: ClientListProps) {
         user_id,
         goals,
         experience_level,
-        profiles!client_profiles_user_id_fkey(full_name, email, phone),
-        created_at
+        created_at,
+        profiles:user_id (
+          full_name,
+          email,
+          phone
+        )
       `)
       .eq("trainer_id", trainerId)
       .order("created_at", { ascending: false });

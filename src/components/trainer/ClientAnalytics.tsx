@@ -34,7 +34,13 @@ export function ClientAnalytics({ trainerId }: ClientAnalyticsProps) {
   const fetchClients = async () => {
     const { data } = await supabase
       .from("client_profiles")
-      .select("id, user_id, profiles!client_profiles_user_id_fkey(full_name)")
+      .select(`
+        id,
+        user_id,
+        profiles:user_id (
+          full_name
+        )
+      `)
       .eq("trainer_id", trainerId);
 
     if (data) {
@@ -173,7 +179,9 @@ export function ClientAnalytics({ trainerId }: ClientAnalyticsProps) {
     return streak;
   };
 
-  const selectedClient = clients.find(c => c.id === selectedClientId);
+  const getClientName = (client: any) => {
+    return client?.profiles?.full_name || "Unknown Client";
+  };
 
   return (
     <div className="space-y-6">
@@ -189,7 +197,7 @@ export function ClientAnalytics({ trainerId }: ClientAnalyticsProps) {
             <SelectContent>
               {clients.map((client) => (
                 <SelectItem key={client.id} value={client.id}>
-                  {client.profiles?.full_name || "Unknown Client"}
+                  {getClientName(client)}
                 </SelectItem>
               ))}
             </SelectContent>
