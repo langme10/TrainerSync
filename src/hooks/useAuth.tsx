@@ -74,8 +74,22 @@ export function useAuth() {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Sign out error:", error);
+      }
+      // Clear local state
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      // Navigate to auth page
+      navigate("/auth", { replace: true });
+    } catch (error) {
+      console.error("Unexpected sign out error:", error);
+      // Still navigate even if there's an error
+      navigate("/auth", { replace: true });
+    }
   };
 
   return {
