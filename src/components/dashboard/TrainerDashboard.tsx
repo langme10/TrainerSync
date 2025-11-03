@@ -3,14 +3,18 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, UserPlus, Calendar, Users } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { LogOut, UserPlus, Calendar, Users, MessageCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { AvailabilityManager } from "@/components/trainer/AvailabilityManager";
 import { ProgramManager } from "@/components/trainer/ProgramManager";
 import { MealPlanManager } from "@/components/trainer/MealPlanManager";
-import { TrainerMessaging } from "@/components/messaging/TrainerMessaging";
 
 export function TrainerDashboard() {
   const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { unreadCount } = useUnreadMessages();
   const [trainerProfileId, setTrainerProfileId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     totalClients: 0,
@@ -76,10 +80,21 @@ export function TrainerDashboard() {
             <h1 className="text-3xl font-bold">Welcome back, {profile?.full_name}</h1>
             <p className="text-muted-foreground">Trainer Dashboard</p>
           </div>
-          <Button onClick={signOut} variant="outline">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate('/messages')} variant="outline" className="relative">
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Messages
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-primary">
+                  {unreadCount}
+                </Badge>
+              )}
+            </Button>
+            <Button onClick={signOut} variant="outline">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -125,7 +140,6 @@ export function TrainerDashboard() {
 
         {trainerProfileId ? (
           <div className="space-y-6">
-            <TrainerMessaging trainerId={trainerProfileId} currentUserId={profile?.id || ""} />
             <AvailabilityManager trainerId={trainerProfileId} />
             <ProgramManager trainerId={trainerProfileId} />
             <MealPlanManager trainerId={trainerProfileId} />

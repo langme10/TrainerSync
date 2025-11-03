@@ -3,15 +3,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, Calendar, Dumbbell, Apple } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { LogOut, Calendar, Dumbbell, Apple, MessageCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { BookingCalendar } from "@/components/client/BookingCalendar";
 import { ProgramViewer } from "@/components/client/ProgramViewer";
 import { MealPlanViewer } from "@/components/client/MealPlanViewer";
 import { ProgressTracking } from "@/components/client/ProgressTracking";
-import { ClientMessaging } from "@/components/messaging/ClientMessaging";
 
 export function ClientDashboard() {
   const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { unreadCount } = useUnreadMessages();
   const [clientProfileId, setClientProfileId] = useState<string | null>(null);
   const [trainerId, setTrainerId] = useState<string | null>(null);
   const [nextSession, setNextSession] = useState<any>(null);
@@ -61,10 +65,21 @@ export function ClientDashboard() {
             <h1 className="text-3xl font-bold">Welcome, {profile?.full_name}</h1>
             <p className="text-muted-foreground">Client Dashboard</p>
           </div>
-          <Button onClick={signOut} variant="outline">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate('/messages')} variant="outline" className="relative">
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Messages
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 bg-primary">
+                  {unreadCount}
+                </Badge>
+              )}
+            </Button>
+            <Button onClick={signOut} variant="outline">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -122,7 +137,6 @@ export function ClientDashboard() {
           <div className="space-y-6">
             <BookingCalendar clientId={clientProfileId} trainerId={trainerId} />
             <ProgressTracking clientId={clientProfileId} />
-            <ClientMessaging clientId={clientProfileId} currentUserId={profile?.id || ""} />
             <div className="grid md:grid-cols-2 gap-6">
               <ProgramViewer clientId={clientProfileId} />
               <MealPlanViewer clientId={clientProfileId} />
