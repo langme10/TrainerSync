@@ -24,6 +24,8 @@ interface AvailabilitySlot {
   start_time: string;
   end_time: string;
   duration_minutes: number;
+  specific_date?: string | null;
+  is_recurring?: boolean;
 }
 
 interface Booking {
@@ -125,18 +127,23 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
   };
 
   const handleBookSlot = async (slot: AvailabilitySlot) => {
-    // Calculate the next occurrence of this day
-    const today = new Date();
-    const targetDay = slot.day_of_week;
-    const currentDay = today.getDay();
-    
-    let daysToAdd = targetDay - currentDay;
-    if (daysToAdd <= 0) {
-      daysToAdd += 7;
+    // Use specific_date if available, otherwise calculate next occurrence
+    let formattedDate: string;
+    if (slot.specific_date) {
+      formattedDate = slot.specific_date;
+    } else {
+      const today = new Date();
+      const targetDay = slot.day_of_week;
+      const currentDay = today.getDay();
+      
+      let daysToAdd = targetDay - currentDay;
+      if (daysToAdd <= 0) {
+        daysToAdd += 7;
+      }
+      
+      const bookingDate = addDays(today, daysToAdd);
+      formattedDate = format(bookingDate, 'yyyy-MM-dd');
     }
-    
-    const bookingDate = addDays(today, daysToAdd);
-    const formattedDate = format(bookingDate, 'yyyy-MM-dd');
 
     // Check if this slot is already booked by ANY client
     const isSlotTaken = allTrainerBookings.some(
@@ -182,17 +189,23 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
   };
 
   const isSlotBooked = (slot: AvailabilitySlot) => {
-    const today = new Date();
-    const targetDay = slot.day_of_week;
-    const currentDay = today.getDay();
-    
-    let daysToAdd = targetDay - currentDay;
-    if (daysToAdd <= 0) {
-      daysToAdd += 7;
+    // Use specific_date if available, otherwise calculate next occurrence
+    let formattedDate: string;
+    if (slot.specific_date) {
+      formattedDate = slot.specific_date;
+    } else {
+      const today = new Date();
+      const targetDay = slot.day_of_week;
+      const currentDay = today.getDay();
+      
+      let daysToAdd = targetDay - currentDay;
+      if (daysToAdd <= 0) {
+        daysToAdd += 7;
+      }
+      
+      const bookingDate = addDays(today, daysToAdd);
+      formattedDate = format(bookingDate, 'yyyy-MM-dd');
     }
-    
-    const bookingDate = addDays(today, daysToAdd);
-    const formattedDate = format(bookingDate, 'yyyy-MM-dd');
 
     // Check if this slot is booked by ANY client (not just current client)
     return allTrainerBookings.some(
@@ -201,11 +214,16 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
     );
   };
 
-  const getNextOccurrenceDate = (dayOfWeek: number) => {
+  const getNextOccurrenceDate = (slot: AvailabilitySlot) => {
+    // Use specific_date if available, otherwise calculate next occurrence
+    if (slot.specific_date) {
+      return parseISO(slot.specific_date);
+    }
+    
     const today = new Date();
     const currentDay = today.getDay();
     
-    let daysToAdd = dayOfWeek - currentDay;
+    let daysToAdd = slot.day_of_week - currentDay;
     if (daysToAdd <= 0) {
       daysToAdd += 7;
     }
@@ -269,7 +287,7 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
           ) : (
             slots.map((slot) => {
               const booked = isSlotBooked(slot);
-              const nextDate = getNextOccurrenceDate(slot.day_of_week);
+              const nextDate = getNextOccurrenceDate(slot);
               return (
                 <div
                   key={slot.id}
@@ -300,10 +318,10 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
                     </div>
                     {booked ? (
                       <Badge className="bg-success">
-                        {bookings.some(b => 
-                          b.booking_date === format(getNextOccurrenceDate(slot.day_of_week), 'yyyy-MM-dd') && 
-                          b.start_time === slot.start_time
-                        ) ? 'Your Booking' : 'Booked'}
+                        {bookings.some(b => {
+                          const slotDate = slot.specific_date || format(getNextOccurrenceDate(slot), 'yyyy-MM-dd');
+                          return b.booking_date === slotDate && b.start_time === slot.start_time;
+                        }) ? 'Your Booking' : 'Booked'}
                       </Badge>
                     ) : (
                       <Button size="sm" onClick={(e) => {
