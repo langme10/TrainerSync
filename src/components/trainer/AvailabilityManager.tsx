@@ -58,16 +58,19 @@ export function AvailabilityManager({ trainerId }: { trainerId: string }) {
       .select('*')
       .eq('trainer_id', trainerId)
       .eq('is_active', true)
+      .not('specific_date', 'is', null)
       .gte('specific_date', today)
       .order('specific_date', { ascending: true })
       .order('start_time', { ascending: true });
 
     if (error) {
+      console.error("Fetch slots error:", error);
       toast({
         title: "Error loading availability",
         description: error.message,
         variant: "destructive",
       });
+      setSlots([]);
     } else {
       setSlots(data || []);
     }
