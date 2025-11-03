@@ -3,9 +3,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Clock, Check } from "lucide-react";
+import { Calendar, Clock, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format, addDays, startOfWeek } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface AvailabilitySlot {
   id: string;
@@ -148,6 +159,43 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
     );
   };
 
+  const getNextOccurrenceDate = (dayOfWeek: number) => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    
+    let daysToAdd = dayOfWeek - currentDay;
+    if (daysToAdd <= 0) {
+      daysToAdd += 7;
+    }
+    
+    return addDays(today, daysToAdd);
+  };
+
+  const handleCancelBooking = async (bookingId: string) => {
+    const { error } = await supabase
+      .from('bookings')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: clientId,
+      })
+      .eq('id', bookingId);
+
+    if (error) {
+      toast({
+        title: "Error cancelling booking",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Booking cancelled",
+        description: "Your session has been cancelled.",
+      });
+      fetchData();
+    }
+  };
+
   if (loading) return <div>Loading availability...</div>;
 
   return (
@@ -167,6 +215,7 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
           ) : (
             slots.map((slot) => {
               const booked = isSlotBooked(slot);
+              const nextDate = getNextOccurrenceDate(slot.day_of_week);
               return (
                 <div
                   key={slot.id}
@@ -184,7 +233,7 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
                       <Calendar className="h-5 w-5 text-primary" />
                     )}
                     <div>
-                      <div className="font-semibold">{DAYS[slot.day_of_week]}</div>
+                      <div className="font-semibold">{format(nextDate, 'EEEE, MMMM d')}</div>
                       <div className="text-sm text-muted-foreground">
                         {slot.duration_minutes} minute session
                       </div>
@@ -232,7 +281,30 @@ export function BookingCalendar({ clientId, trainerId }: { clientId: string; tra
                     {booking.start_time} - {booking.end_time}
                   </div>
                 </div>
-                <Badge>{booking.status}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge>{booking.status}</Badge>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <X className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel Session</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to cancel this session? This will free up the time slot.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep Session</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleCancelBooking(booking.id)}>
+                          Cancel Session
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             ))}
           </CardContent>
