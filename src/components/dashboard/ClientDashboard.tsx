@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Dumbbell, Apple, MessageCircle } from "lucide-react";
+import { LogOut, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { BookingCalendar } from "@/components/client/BookingCalendar";
@@ -61,30 +61,6 @@ export function ClientDashboard() {
               Sign Out
             </Button>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Assigned Programs</CardTitle>
-              <Dumbbell className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">Check programs below</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Meal Plans</CardTitle>
-              <Apple className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">-</div>
-              <p className="text-xs text-muted-foreground">Check nutrition below</p>
-            </CardContent>
-          </Card>
         </div>
 
         {clientProfileId && trainerId ? (
