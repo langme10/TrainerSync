@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, X } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addDays, startOfWeek, endOfWeek } from "date-fns";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +17,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+type ViewMode = "day" | "week";
 
 interface Booking {
   id: string;
@@ -37,19 +40,34 @@ const formatTime = (time: string) => {
 export function ClientBookings({ clientId }: { clientId: string }) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const { toast } = useToast();
 
   useEffect(() => {
     fetchBookings();
-  }, [clientId]);
+  }, [clientId, viewMode, selectedDate]);
 
   const fetchBookings = async () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
+    let startDate: string;
+    let endDate: string;
+
+    if (viewMode === "day") {
+      startDate = format(selectedDate, "yyyy-MM-dd");
+      endDate = startDate;
+    } else {
+      const weekStart = startOfWeek(selectedDate);
+      const weekEnd = endOfWeek(selectedDate);
+      startDate = format(weekStart, "yyyy-MM-dd");
+      endDate = format(weekEnd, "yyyy-MM-dd");
+    }
+
     const { data, error } = await supabase
       .from('bookings')
       .select('*')
       .eq('client_id', clientId)
-      .gte('booking_date', today)
+      .gte('booking_date', startDate)
+      .lte('booking_date', endDate)
       .in('status', ['pending', 'confirmed'])
       .order('booking_date', { ascending: true })
       .order('start_time', { ascending: true });
@@ -91,6 +109,56 @@ export function ClientBookings({ clientId }: { clientId: string }) {
     }
   };
 
+  const goToPrevious = () => {
+    if (viewMode === "day") {
+      setSelectedDate(addDays(selectedDate, -1));
+    } else {
+      setSelectedDate(addDays(selectedDate, -7));
+    }
+  };
+
+  const goToNext = () => {
+    if (viewMode === "day") {
+      setSelectedDate(addDays(selectedDate, 1));
+    } else {
+      setSelectedDate(addDays(selectedDate, 7));
+    }
+  };
+
+  const goToToday = () => {
+    setSelectedDate(new Date());
+  };
+
+  const getDateRangeText = () => {
+    if (viewMode === "day") {
+      return format(selectedDate, "EEEE, MMMM d, yyyy");
+    } else {
+      const weekStart = startOfWeek(selectedDate);
+      const weekEnd = endOfWeek(selectedDate);
+      return `${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d, yyyy")}`;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "confirmed":
+        return "bg-green-500/10 text-green-500 hover:bg-green-500/20";
+      case "pending":
+        return "bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20";
+      default:
+        return "bg-gray-500/10 text-gray-500 hover:bg-gray-500/20";
+    }
+  };
+
+  const groupedBookings = viewMode === "week" 
+    ? bookings.reduce((acc, booking) => {
+        const date = booking.booking_date;
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(booking);
+        return acc;
+      }, {} as Record<string, Booking[]>)
+    : { [format(selectedDate, "yyyy-MM-dd")]: bookings };
+
   if (loading) {
     return <div className="p-8 text-center">Loading bookings...</div>;
   }
@@ -98,55 +166,108 @@ export function ClientBookings({ clientId }: { clientId: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Upcoming Sessions</CardTitle>
-        <CardDescription>View and manage your scheduled training sessions</CardDescription>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Upcoming Sessions
+            </CardTitle>
+            <CardDescription>View and manage your scheduled training sessions</CardDescription>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex gap-1 bg-muted p-1 rounded-lg">
+              <Button
+                size="sm"
+                variant={viewMode === "day" ? "default" : "ghost"}
+                onClick={() => setViewMode("day")}
+              >
+                Day
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === "week" ? "default" : "ghost"}
+                onClick={() => setViewMode("week")}
+              >
+                Week
+              </Button>
+            </div>
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" onClick={goToPrevious}>
+                Previous
+              </Button>
+              <Button size="sm" variant="outline" onClick={goToToday}>
+                Today
+              </Button>
+              <Button size="sm" variant="outline" onClick={goToNext}>
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground mt-2">{getDateRangeText()}</p>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {bookings.length === 0 ? (
+      <CardContent>
+        {Object.keys(groupedBookings).length === 0 || bookings.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            No upcoming sessions scheduled. Book a session using the calendar below.
+            <Calendar className="h-12 w-12 mx-auto mb-2 opacity-20" />
+            <p>No sessions scheduled for this {viewMode}</p>
+            <p className="text-sm mt-1">Book a session using the calendar below</p>
           </div>
         ) : (
-          bookings.map((booking) => (
-            <div
-              key={booking.id}
-              className="flex items-center justify-between p-4 rounded-lg bg-muted hover:bg-muted/80 transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-primary" />
-                <div>
-                  <div className="font-semibold">
-                    {format(parseISO(booking.booking_date), "EEEE, MMMM d, yyyy")}
-                  </div>
-                  <div className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {formatTime(booking.start_time)} - {formatTime(booking.end_time)} ({booking.duration_minutes} min)
+          <div className="space-y-6">
+            {Object.entries(groupedBookings).map(([date, dateBookings]) => (
+              dateBookings.length > 0 && (
+                <div key={date}>
+                  {viewMode === "week" && (
+                    <h3 className="font-semibold mb-3 text-sm">
+                      {format(parseISO(date), "EEEE, MMMM d")}
+                    </h3>
+                  )}
+                  <div className="space-y-2">
+                    {dateBookings.map((booking) => (
+                      <div
+                        key={booking.id}
+                        className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors"
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">
+                              {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                            </span>
+                          </div>
+                          <Badge className={getStatusColor(booking.status)}>
+                            {booking.status}
+                          </Badge>
+                        </div>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <X className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Cancel Session</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to cancel this session? This will free up the time slot for other clients to book.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Keep Session</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleCancelBooking(booking.id)}>
+                                Cancel Session
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <X className="h-4 w-4 text-destructive" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel Session</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to cancel this session? This will free up the time slot for other clients to book.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Keep Session</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleCancelBooking(booking.id)}>
-                      Cancel Session
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          ))
+              )
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>
