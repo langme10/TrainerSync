@@ -8,6 +8,7 @@ import { BookingCalendar } from "@/components/client/BookingCalendar";
 import { ProgramViewer } from "@/components/client/ProgramViewer";
 import { MealPlanViewer } from "@/components/client/MealPlanViewer";
 import { ProgressTracking } from "@/components/client/ProgressTracking";
+import { ClientMessaging } from "@/components/messaging/ClientMessaging";
 
 export function ClientDashboard() {
   const { profile, signOut } = useAuth();
@@ -121,6 +122,7 @@ export function ClientDashboard() {
           <div className="space-y-6">
             <BookingCalendar clientId={clientProfileId} trainerId={trainerId} />
             <ProgressTracking clientId={clientProfileId} />
+            <ClientMessaging clientId={clientProfileId} currentUserId={profile?.id || ""} />
             <div className="grid md:grid-cols-2 gap-6">
               <ProgramViewer clientId={clientProfileId} />
               <MealPlanViewer clientId={clientProfileId} />

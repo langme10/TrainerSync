@@ -7,6 +7,7 @@ import { LogOut, UserPlus, Calendar, Users } from "lucide-react";
 import { AvailabilityManager } from "@/components/trainer/AvailabilityManager";
 import { ProgramManager } from "@/components/trainer/ProgramManager";
 import { MealPlanManager } from "@/components/trainer/MealPlanManager";
+import { TrainerMessaging } from "@/components/messaging/TrainerMessaging";
 
 export function TrainerDashboard() {
   const { profile, signOut } = useAuth();
@@ -124,6 +125,7 @@ export function TrainerDashboard() {
 
         {trainerProfileId ? (
           <div className="space-y-6">
+            <TrainerMessaging trainerId={trainerProfileId} currentUserId={profile?.id || ""} />
             <AvailabilityManager trainerId={trainerProfileId} />
             <ProgramManager trainerId={trainerProfileId} />
             <MealPlanManager trainerId={trainerProfileId} />
