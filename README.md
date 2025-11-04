@@ -1,6 +1,6 @@
 <h1>🏋️‍♂️ TrainerSync — Personal Training Scheduler</h1>
 
-<h1>[Try it out](https://trainersync-937221154891.us-central1.run.app)</h1>
+<b>[Try it out](https://trainersync-937221154891.us-central1.run.app)</b>
 
 <h2>Description</h2>
 TrainerSync is a **personal training management platform** built to streamline client scheduling, workouts, and communication.  
